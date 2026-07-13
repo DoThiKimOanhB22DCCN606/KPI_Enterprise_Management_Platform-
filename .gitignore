@@ -1,0 +1,9 @@
+.env
+*.jar
+target/
+.idea/
+*.iml
+__pycache__/
+node_modules/
+.env.local
+backups/

@@ -1,0 +1,382 @@
+version: '3.8'
+
+services:
+  # ==========================================
+  # INFRASTRUCTURE
+  # ==========================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: kpi-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    command: ["postgres", "-c", "max_connections=500"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - enterprise-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: kpi-redis
+    ports:
+      - "6379:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - enterprise-network
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: kpi-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS}
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - enterprise-network
+
+  minio:
+    image: minio/minio:latest
+    container_name: kemp-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_USER}
+      MINIO_ROOT_PASSWORD: ${MINIO_PASSWORD}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - minio_data:/data
+    networks:
+      - enterprise-network
+
+#  prometheus:
+#    image: prom/prometheus:latest
+#    container_name: kemp-prometheus
+#    ports:
+#      - "9090:9090"
+#    volumes:
+#      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+#    networks:
+#      - enterprise-network
+
+#  grafana:
+#    image: grafana/grafana:latest
+#    container_name: kemp-grafana
+#    ports:
+#      - "3001:3000"
+#    environment:
+#      GF_SECURITY_ADMIN_PASSWORD: admin
+#      GF_PATHS_PROVISIONING: /etc/grafana/provisioning
+#      GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH: /var/lib/grafana/dashboards/kemp-overview.json
+#    volumes:
+#      - grafana_data:/var/lib/grafana
+#      - ./monitoring/grafana/provisioning:/etc/grafana/provisioning
+#      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+#    networks:
+#      - enterprise-network
+
+  # ==========================================
+  # MICROSERVICES
+  # ==========================================
+  gateway-service:
+    build: ./gateway-service
+    ports:
+      - "8080:8080"
+    environment: &spring-env
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB}
+      SPRING_DATASOURCE_USERNAME: ${POSTGRES_USER}
+      SPRING_DATASOURCE_PASSWORD: ${POSTGRES_PASSWORD}
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: ${RABBITMQ_USER}
+      SPRING_RABBITMQ_PASSWORD: ${RABBITMQ_PASS}
+      SPRING_DATA_REDIS_HOST: redis
+      SPRING_DATA_REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET}
+      JAVA_TOOL_OPTIONS: "-Xmx192m -Xms128m -Xss512k"
+      SPRING_FLYWAY_TABLE: flyway_history_$${spring.application.name}
+      SPRING_FLYWAY_BASELINE_ON_MIGRATE: "true"
+      SPRING_FLYWAY_BASELINE_VERSION: "0"
+      SPRING_JPA_HIBERNATE_DDL_AUTO: update
+    depends_on: &spring-depends
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8081:8081"
+    environment:
+      <<: *spring-env
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+      MICROSOFT_CLIENT_ID: ${MICROSOFT_CLIENT_ID}
+      MICROSOFT_CLIENT_SECRET: ${MICROSOFT_CLIENT_SECRET}
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8081/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  kpi-service:
+    build: ./kpi-service
+    ports:
+      - "8082:8082"
+    environment:
+      <<: *spring-env
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_USER: ${MINIO_USER}
+      MINIO_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8082/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+#  goal-service:
+#    build: ./goal-service
+#    ports:
+#      - "8083:8083"
+#    environment:
+#      <<: *spring-env
+#    depends_on: *spring-depends
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -q --spider http://localhost:8083/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    networks:
+#      - enterprise-network
+
+#  report-service:
+#    build: ./report-service
+#    ports:
+#      - "8084:8084"
+#    environment:
+#      <<: *spring-env
+#    depends_on: *spring-depends
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -q --spider http://localhost:8084/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    networks:
+#      - enterprise-network
+
+  alert-service:
+    build: ./alert-service
+    ports:
+      - "8085:8085"
+    environment:
+      <<: *spring-env
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8085/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  web-bff-service:
+    build: ./web-bff-service
+    ports:
+      - "8086:8086"
+    environment:
+      <<: *spring-env
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8086/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "8087:8087"
+    environment:
+      <<: *spring-env
+      SLACK_WEBHOOK_URL: ${SLACK_WEBHOOK_URL}
+      TELEGRAM_BOT_TOKEN: ${TELEGRAM_BOT_TOKEN}
+      ZALO_ACCESS_TOKEN: ${ZALO_ACCESS_TOKEN}
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8087/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  analytics-service:
+    build: ./analytics-service
+    ports:
+      - "8088:8088"
+    environment:
+      <<: *spring-env
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8088/actuator/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  ai-service:
+    build: ./ai-service
+    ports:
+      - "8089:8089"
+    environment:
+      <<: *spring-env
+      GROQ_API_KEY: ${GROQ_API_KEY}
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8089/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+#  audit-service:
+#    build: ./audit-service
+#    ports:
+#      - "8092:8092"
+#    environment:
+#      <<: *spring-env
+#    depends_on: *spring-depends
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -q --spider http://localhost:8092/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    networks:
+#      - enterprise-network
+
+  tenant-service:
+    build: ./tenant-service
+    ports:
+      - "8093:8093"
+    environment:
+      <<: *spring-env
+      MINIO_ENDPOINT: ${MINIO_ENDPOINT}
+      MINIO_USER: ${MINIO_USER}
+      MINIO_PASSWORD: ${MINIO_PASSWORD}
+      MINIO_BUCKET: ${MINIO_BUCKET}
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8093/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  user-service:
+    build: ./user-service
+    ports:
+      - "8094:8094"
+    environment:
+      <<: *spring-env
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8094/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+  organization-service:
+    build: ./organization-service
+    ports:
+      - "8095:8095"
+    environment:
+      <<: *spring-env
+    depends_on: *spring-depends
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q --spider http://localhost:8095/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+    networks:
+      - enterprise-network
+
+#  dashboard-service:
+#    build: ./dashboard-service
+#    ports:
+#      - "8096:8096"
+#    environment:
+#      <<: *spring-env
+#    depends_on: *spring-depends
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -q --spider http://localhost:8096/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    networks:
+#      - enterprise-network
+
+#  integration-service:
+#    build: ./integration-service
+#    ports:
+#      - "8097:8097"
+#    environment:
+#      <<: *spring-env
+#    depends_on: *spring-depends
+#    healthcheck:
+#      test: ["CMD-SHELL", "wget -q --spider http://localhost:8097/actuator/health"]
+#      interval: 30s
+#      timeout: 10s
+#      retries: 3
+#    networks:
+#      - enterprise-network
+
+networks:
+  enterprise-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  minio_data:
+  grafana_data:

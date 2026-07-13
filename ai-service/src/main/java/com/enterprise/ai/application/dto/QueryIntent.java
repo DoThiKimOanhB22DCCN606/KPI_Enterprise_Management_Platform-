@@ -1,0 +1,19 @@
+package com.enterprise.ai.application.dto;
+
+public enum QueryIntent {
+    GREETING,
+    HELP,
+    STORE_LEADERBOARD,
+    BOTTOM_RANKING,
+    TREND_COMPARISON,
+    ROOT_CAUSE_ANALYSIS,
+    EXECUTIVE_SUMMARY,
+    KPI_SUMMARY,
+    STORE_ANALYSIS,
+    DEPARTMENT_ANALYSIS,
+    RECOMMENDATION,
+    GOAL_STATUS,
+    FOLLOW_UP,
+    EMPLOYEE_PERFORMANCE,
+    UNKNOWN
+}

@@ -1,0 +1,32 @@
+server:
+  port: 8094
+spring:
+  application:
+    name: user-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kpi_db}
+    username: ${SPRING_DATASOURCE_USERNAME:kemp_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:kemp_secret}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+  data:
+    redis:
+      host: ${SPRING_DATA_REDIS_HOST:redis}
+      port: ${SPRING_DATA_REDIS_PORT:6379}
+  mail:
+    host: localhost
+    port: 25
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}

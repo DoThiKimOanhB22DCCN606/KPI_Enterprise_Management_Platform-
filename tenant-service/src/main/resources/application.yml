@@ -1,0 +1,30 @@
+server:
+  port: 8094
+spring:
+  application:
+    name: tenant-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kpi_db}
+    username: ${SPRING_DATASOURCE_USERNAME:kemp_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:kemp_secret}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+  user: ${MINIO_USER:minio_user}
+  password: ${MINIO_PASSWORD:MinioSecure@2025}
+  bucket: ${MINIO_BUCKET:kemp-files}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}

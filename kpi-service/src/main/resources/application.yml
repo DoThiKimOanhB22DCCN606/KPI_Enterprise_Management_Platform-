@@ -1,0 +1,57 @@
+server:
+  port: 8082
+
+spring:
+  application:
+    name: kpi-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/${POSTGRES_DB:kpi_service_db}
+    username: ${POSTGRES_USER:kemp_admin}
+    password: ${POSTGRES_PASSWORD:kemp_secret}
+    driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 2
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        format_sql: true
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    table: kpi-service_flyway_history
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: ${RABBITMQ_USER:enterprise_user}
+    password: ${RABBITMQ_PASS:KempSecure@2025}
+
+minio:
+  endpoint: ${MINIO_ENDPOINT:http://minio:9000}
+  access-key: ${MINIO_USER:minio_user}
+  secret-key: ${MINIO_PASSWORD:MinioSecure@2025}
+  bucket: ${MINIO_BUCKET:kemp-files}
+
+jwt:
+  secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}
+  access-token-expiration-ms: 900000
+  refresh-token-expiration-ms: 604800000
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

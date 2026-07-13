@@ -1,0 +1,84 @@
+global:
+  scrape_interval: 15s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: 'kemp-gateway'
+    static_configs:
+      - targets: ['gateway-service:8080']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-auth'
+    static_configs:
+      - targets: ['auth-service:8081']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-kpi'
+    static_configs:
+      - targets: ['kpi-service:8082']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-goal'
+    static_configs:
+      - targets: ['goal-service:8083']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-report'
+    static_configs:
+      - targets: ['report-service:8084']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-alert'
+    static_configs:
+      - targets: ['alert-service:8085']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-web-bff'
+    static_configs:
+      - targets: ['web-bff-service:8086']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-notification'
+    static_configs:
+      - targets: ['notification-service:8087']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-analytics'
+    static_configs:
+      - targets: ['analytics-service:8088']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-ai'
+    static_configs:
+      - targets: ['ai-service:8089']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-audit'
+    static_configs:
+      - targets: ['audit-service:8092']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-user'
+    static_configs:
+      - targets: ['user-service:8093']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-tenant'
+    static_configs:
+      - targets: ['tenant-service:8094']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-organization'
+    static_configs:
+      - targets: ['organization-service:8095']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-dashboard'
+    static_configs:
+      - targets: ['dashboard-service:8096']
+    metrics_path: '/actuator/prometheus'
+
+  - job_name: 'kemp-integration'
+    static_configs:
+      - targets: ['integration-service:8097']
+    metrics_path: '/actuator/prometheus'

@@ -1,0 +1,28 @@
+server:
+  port: 8097
+spring:
+  application:
+    name: integration-service
+  servlet:
+    multipart:
+      max-file-size: 50MB
+      max-request-size: 50MB
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/kpi_db}
+    username: ${SPRING_DATASOURCE_USERNAME:kemp_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:kemp_secret}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: false
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}

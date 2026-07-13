@@ -1,0 +1,59 @@
+server:
+  port: 8089
+
+spring:
+  application:
+    name: ai-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/${POSTGRES_DB:kemp_db}
+    username: ${POSTGRES_USER:kemp_admin}
+    password: ${POSTGRES_PASSWORD:kemp_secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  ai:
+    openai:
+      api-key: ${GROQ_API_KEY:dummy}
+      base-url: https://api.groq.com/openai
+      chat:
+        options:
+          model: llama-3.1-8b-instant
+          temperature: 0.1
+    retry:
+      max-attempts: 1
+      on-http-codes-to-retry: 429,500,503
+      on-client-errors: false
+
+analytics:
+  service:
+    url: ${ANALYTICS_SERVICE_URL:http://analytics-service:8088}
+
+
+app:
+  ai:
+    demo-mode: true
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

@@ -1,0 +1,27 @@
+server:
+  port: 8095
+spring:
+  application:
+    name: organization-service
+  datasource:
+    url: ${SPRING_DATASOURCE_URL:jdbc:postgresql://localhost:5433/organization_db}
+    username: ${SPRING_DATASOURCE_USERNAME:kemp_admin}
+    password: ${SPRING_DATASOURCE_PASSWORD:kemp_secret}
+  jpa:
+    open-in-view: false
+    hibernate:
+      ddl-auto: validate
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    table: organization-service_flyway_history
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST:rabbitmq}
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}

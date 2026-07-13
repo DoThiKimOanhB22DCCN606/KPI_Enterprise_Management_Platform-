@@ -1,0 +1,55 @@
+server:
+  port: 8086
+
+spring:
+  application:
+    name: web-bff-service
+
+feign:
+  client:
+    config:
+      default:
+        connectTimeout: 5000
+        readTimeout: 10000
+
+# Feign Client URLs (For MVP, hardcoded to localhost or docker network names)
+downstream:
+  user-service:
+    url: ${USER_SERVICE_URL:http://user-service:8094}
+  org-service:
+    url: ${ORG_SERVICE_URL:http://organization-service:8095}
+  kpi-service:
+    url: ${KPI_SERVICE_URL:http://kpi-service:8082}
+
+# Resilience4j config
+resilience4j:
+  circuitbreaker:
+    instances:
+      kpiService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+        permittedNumberOfCallsInHalfOpenState: 3
+        waitDurationInOpenState: 10s
+        failureRateThreshold: 50
+        eventConsumerBufferSize: 10
+      userService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+      orgService:
+        registerHealthIndicator: true
+        slidingWindowSize: 10
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

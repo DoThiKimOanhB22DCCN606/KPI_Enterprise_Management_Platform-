@@ -1,0 +1,50 @@
+server:
+  port: 8092
+
+spring:
+  application:
+    name: audit-service
+  datasource:
+    url: jdbc:postgresql://localhost:5433/${POSTGRES_DB:kemp_db}
+    username: ${POSTGRES_USER:kemp_admin}
+    password: ${POSTGRES_PASSWORD:kemp_secret}
+    driver-class-name: org.postgresql.Driver
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: enterprise_user
+    password: enterprise_password
+
+rabbitmq:
+  exchange:
+    name: kemp.events.exchange
+  queue:
+    audit: audit-service.logs.queue
+
+
+jwt.secret: ${JWT_SECRET:kemp-super-secret-jwt-key-must-be-256-bits-long-replace-in-prod}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus,metrics
+  endpoint:
+    health:
+      show-details: always
+      probes:
+        enabled: true
+  metrics:
+    export:
+      prometheus:
+        enabled: true

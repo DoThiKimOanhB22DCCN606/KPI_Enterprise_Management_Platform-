@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kpi-service
+  labels:
+    app: kemp
+    service: kpi
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      service: kpi
+  template:
+    metadata:
+      labels:
+        service: kpi
+    spec:
+      containers:
+        - name: kpi-service
+          image: ghcr.io/your-org/kemp-kpi-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8082
+          env:
+            - name: SPRING_DATASOURCE_URL
+              value: "jdbc:postgresql://kpi-db:5432/kpi_db"
+            - name: SPRING_RABBITMQ_HOST
+              value: "rabbitmq"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "500m"
+            limits:
+              memory: "1Gi"
+              cpu: "1000m"
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8082
+            initialDelaySeconds: 45
+            periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: kpi-service
+spec:
+  type: ClusterIP
+  ports:
+    - port: 8082
+      targetPort: 8082
+  selector:
+    service: kpi

@@ -1,0 +1,70 @@
+name: KEMP CI/CD Pipeline
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE_PREFIX: ${{ github.repository_owner }}/kemp
+
+jobs:
+  build-test-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+      
+    strategy:
+      fail-fast: false
+      matrix:
+        service: 
+          - auth-service
+          - kpi-service
+          - goal-service
+          - report-service
+          - web-bff-service
+          - gateway-service
+          - alert-service
+          - notification-service
+          - analytics-service
+          - audit-service
+          - ai-service
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v3
+        with:
+          java-version: '25'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Build and Test with JaCoCo Coverage (80% enforced)
+        working-directory: ./${{ matrix.service }}
+        # The 'verify' phase will run tests and trigger the jacoco-maven-plugin to check rules.
+        run: mvn clean verify
+
+      - name: Log in to the Container registry
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and Push Docker Image
+        if: github.event_name != 'pull_request'
+        working-directory: ./${{ matrix.service }}
+        run: |
+          IMAGE_NAME=${{ env.REGISTRY }}/${{ env.IMAGE_PREFIX }}-${{ matrix.service }}:latest
+          
+          # Using Spring Boot Cloud Native Buildpacks
+          mvn spring-boot:build-image -Dspring-boot.build-image.imageName=$IMAGE_NAME
+          
+          # Push the image to GHCR
+          docker push $IMAGE_NAME
